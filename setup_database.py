@@ -1,43 +1,55 @@
 from database import connect
 
-def create_tables():
-    connection = connect()
-    if connection:
-        cursor = connection.cursor()
+
+def setup_database():
+    conn = connect()
+    if conn:
+        cursor = conn.cursor()
         try:
+            # Drop existing tables if they exist (optional but useful for initial setup)
+            cursor.execute("DROP TABLE IF EXISTS properties")
+            cursor.execute("DROP TABLE IF EXISTS spaces")
+            cursor.execute("DROP TABLE IF EXISTS players")
+
+            # Create players table with the new "position" column
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS players (
+                CREATE TABLE players (
                     id SERIAL PRIMARY KEY,
-                    name VARCHAR(50) NOT NULL,
-                    money INTEGER NOT NULL,
-                    turn_order INTEGER NOT NULL
-                );
+                    name VARCHAR(255) NOT NULL,
+                    money INT NOT NULL,
+                    turn_order INT NOT NULL,
+                    position INT NOT NULL DEFAULT 0
+                )
             """)
+            # Create properties table
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS properties (
+                CREATE TABLE properties (
                     id SERIAL PRIMARY KEY,
-                    name VARCHAR(100) NOT NULL,
-                    owner_id INTEGER REFERENCES players(id),
-                    cost INTEGER NOT NULL,
-                    rent INTEGER NOT NULL,
-                    improvements INTEGER DEFAULT 0
-                );
+                    name VARCHAR(255) NOT NULL,
+                    cost INT NOT NULL,
+                    rent INT NOT NULL,
+                    owner_id INT,
+                    improvements INT NOT NULL DEFAULT 0,
+                    FOREIGN KEY (owner_id) REFERENCES players(id)
+                )
             """)
+            # Create spaces table
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS spaces (
+                CREATE TABLE spaces (
                     id SERIAL PRIMARY KEY,
-                    name VARCHAR(100) NOT NULL,
-                    description TEXT
-                );
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT NOT NULL
+                )
             """)
-            connection.commit()
-            print("Tables created successfully!")
+            conn.commit()
+            print("Database setup complete.")
         except Exception as e:
-            print("Error creating tables:", e)
-            connection.rollback()
+            print("Error setting up database:", e)
+            conn.rollback()
         finally:
             cursor.close()
-            connection.close()
+            conn.close()
+
 
 if __name__ == "__main__":
-    create_tables()
+    setup_database()

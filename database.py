@@ -1,5 +1,4 @@
 import psycopg2
-from psycopg2 import sql
 from dotenv import load_dotenv
 import os
 
@@ -13,7 +12,7 @@ DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT')
 
-def connect():
+def connect(print_message=False):
     try:
         # Establish connection to the PostgreSQL database
         connection = psycopg2.connect(
@@ -23,13 +22,9 @@ def connect():
             host=DB_HOST,
             port=DB_PORT
         )
-        print("Database connection successful!")
+        if print_message:
+            print("Database connection successful!")
         return connection
     except Exception as e:
         print("Error connecting to the database:", e)
         return None
-
-if __name__ == "__main__":
-    conn = connect()
-    if conn:
-        conn.close()

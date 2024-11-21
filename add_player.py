@@ -1,17 +1,18 @@
 from database import connect
 
 class Player:
-    def __init__(self, name, money, turn_order):
+    def __init__(self, name, money, turn_order, position=0):
         self.name = name
         self.money = money
         self.turn_order = turn_order
+        self.position = position
 
     def save_to_db(self, connection):
         with connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO players (name, money, turn_order) 
-                VALUES (%s, %s, %s) RETURNING id
-            """, (self.name, self.money, self.turn_order))
+                INSERT INTO players (name, money, turn_order, position) 
+                VALUES (%s, %s, %s, %s) RETURNING id
+            """, (self.name, self.money, self.turn_order, self.position))
             player_id = cursor.fetchone()[0]
             connection.commit()
             self.id = player_id
