@@ -1,3 +1,5 @@
+# Simulates rolling two dice, returning two random values between 1 and 6.
+
 import random
 
 def roll_dice():

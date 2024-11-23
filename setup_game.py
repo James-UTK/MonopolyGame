@@ -1,24 +1,28 @@
-from add_player import add_player
-from add_property import add_property
-from add_space import add_space
+from player import add_player
+from property import add_property, add_predefined_properties
+from space import add_space
 
 def setup_game():
+    # Set up players
     num_players = int(input("Enter the number of players: "))
     for i in range(num_players):
-        name = input(f"Enter name for player {i + 1}: ")
-        money = int(input("Enter starting money for player: "))
+        name = input(f"Enter the name for player {i + 1}: ")
+        money = int(input(f"Enter starting money for player {name}: "))
         turn_order = i + 1
         add_player(name, money, turn_order)
 
-    # Add properties
-    add_property("Park Place", 350, 35)
-    add_property("Boardwalk", 400, 50)
+    # Add predefined properties
+    add_predefined_properties()
 
-    # Add non-property spaces
-    add_space("Go", "Collect $200 salary as you pass.")
-    add_space("Jail", "Just visiting.")
-    add_space("Chance", "Draw a Chance card.")
-    add_space("Income Tax", "Pay 10% or $200.")
+    # Add custom non-property spaces
+    non_property_spaces = [
+        ("Go", "Collect $200 salary as you pass."),
+        ("Jail", "Just visiting or stay for 3 turns."),
+        ("Chance", "Draw a Chance card for a random event."),
+        ("Income Tax", "Pay 10% of your total money or $200."),
+    ]
+    for space in non_property_spaces:
+        add_space(space[0], space[1])
 
 if __name__ == "__main__":
     setup_game()

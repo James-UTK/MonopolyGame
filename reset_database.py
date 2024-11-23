@@ -1,3 +1,4 @@
+# Resets the database by clearing all data and resetting ID sequences for players, properties, and spaces.
 from database import connect
 
 def reset_database():

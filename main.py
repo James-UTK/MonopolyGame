@@ -1,11 +1,9 @@
-from add_player import add_player
-from add_property import add_predefined_properties
-from add_space import add_predefined_spaces
+# This file controls the game flow, including player turns, movement, and interactions with properties and spaces.
+from player import add_player, update_player_money
+from property import add_property, add_predefined_properties, buy_property, pay_rent, sell_property
+from space import add_predefined_spaces
 from roll_dice import roll_dice
-from buy_property import buy_property
-from pay_rent import pay_rent
 from improve_property import improve_property
-from update_player_money import update_player_money
 from reset_database import reset_database
 from database import connect
 
@@ -18,6 +16,8 @@ BOARD = [
 
 
 def setup_game():
+    # Initializes the game by resetting the database, adding players, and setting up predefined properties and spaces.
+
     reset_database()  # Ensure the database is clear at the start
 
     # Ensure the number of players is between 1 and 8
@@ -43,11 +43,7 @@ def setup_game():
 
 def update_player_position(cursor, player_id, new_position):
     try:
-        cursor.execute("""
-            UPDATE players
-            SET position = %s
-            WHERE id = %s
-        """, (new_position, player_id))
+        cursor.execute("""UPDATE players SET position = %s WHERE id = %s""", (new_position, player_id))
         cursor.connection.commit()
         print(f"Updated player {player_id}'s position to {new_position}.")
     except Exception as e:
@@ -65,30 +61,39 @@ def get_player_money(cursor, player_id):
         return 0
 
 
-def update_player_money(cursor, player_id, amount):
-    try:
-        cursor.execute("""
-            UPDATE players
-            SET money = money + %s
-            WHERE id = %s
-        """, (amount, player_id))
-        cursor.connection.commit()
-        print(f"Updated player {player_id}'s money by {amount}.")
-    except Exception as e:
-        print("Error updating player money:", e)
-        cursor.connection.rollback()
+def check_bankruptcy(cursor, player_id, player_name, players):
+    cursor.execute("SELECT money FROM players WHERE id = %s", (player_id,))
+    money = cursor.fetchone()[0]
+
+    if money <= 0:
+        cursor.execute("SELECT id FROM properties WHERE owner_id = %s", (player_id,))
+        properties = cursor.fetchall()
+
+        if not properties:
+            print(f"{player_name} is bankrupt and out of the game!")
+            return [p for p in players if p[0] != player_id]  # Remove the player
+        else:
+            print(f"{player_name} is bankrupt. Selling all properties.")
+            for property_id in properties:
+                sell_property(player_id, property_id[0])
+
+    return players
 
 
 def handle_player_turn(player_id, player_name):
+    # Start the player's turn and display their name.
     print(f"{player_name}'s turn.")
 
+    # Prompt the player to either roll the dice or quit the game.
     input_value = input(f"{player_name}, press Enter to roll the dice or type 'quit' to end the game: ")
+
+    # If the player types 'quit', end the game.
     if input_value.lower() == "quit":
         return "quit"
 
-    dice1, dice2 = roll_dice()
-    print(f"Rolled: {dice1} and {dice2}")
-    total_roll = dice1 + dice2
+    dice1, dice2 = roll_dice()  # Using the roll_dice function here
+    total_roll = dice1 + dice2  # Calculate the total roll
+    print(f"Rolled: {dice1} and {dice2}, Total roll: {total_roll}")
 
     # Open a single connection for all operations in this turn
     conn = connect()
@@ -114,7 +119,8 @@ def handle_player_turn(player_id, player_name):
         # Handle non-property spaces
         if landed_space == "Go":
             print("You passed Go! Collect $200.")
-            update_player_money(cursor, player_id, 200)
+            update_player_money(player_id, 200)
+
         elif landed_space == "Jail":
             print("Just visiting jail. No action needed.")
         elif landed_space == "Community Fund":
@@ -122,36 +128,38 @@ def handle_player_turn(player_id, player_name):
             print(f"{landed_space}: Receive or pay {amount}.")
             if total_roll % 2 == 0:  # Simple logic to alternate
                 print(f"You receive ${amount}.")
-                update_player_money(cursor, player_id, amount)
+                update_player_money(player_id, amount)
+
             else:
                 print(f"You pay ${amount}.")
-                update_player_money(cursor, player_id, -amount)
+                update_player_money(player_id, -amount)
         elif landed_space in ["Income Tax", "Luxury Tax"]:
             tax_amount = 200 if landed_space == "Income Tax" else 100
             print(f"Pay {tax_amount} for {landed_space}.")
-            update_player_money(cursor, player_id, -tax_amount)
+            update_player_money(player_id, -tax_amount)
     else:
         # Handle property spaces
         cursor.execute("SELECT id, cost FROM properties WHERE name = %s", (landed_space,))
         property_data = cursor.fetchone()
-        property_id, property_cost = property_data
-        cursor.execute("SELECT owner_id FROM properties WHERE id = %s", (property_id,))
-        owner_id = cursor.fetchone()[0]
-        if owner_id:
-            if owner_id != player_id:
-                pay_rent(player_id, property_id)
+        if property_data:  # Prevents crash if property is not found
+            property_id, property_cost = property_data
+            cursor.execute("SELECT owner_id FROM properties WHERE id = %s", (property_id,))
+            owner_id = cursor.fetchone()[0]
+            if owner_id:
+                if owner_id != player_id:
+                    pay_rent(player_id, property_id)
+                else:
+                    improve_property(player_id, property_id)
             else:
-                improve_property(player_id, property_id)
-        else:
-            while True:
-                choice = input(f"Do you want to buy {landed_space} for ${property_cost}? (yes/no): ")
-                if choice.lower() in ["yes", "no"]:
-                    break
-                print("Invalid input. Please enter 'yes' or 'no'.")
-            if choice.lower() == "yes":
-                buy_property(player_id, property_id)
-            else:
-                print("Property not bought.")
+                while True:
+                    choice = input(f"Do you want to buy {landed_space} for ${property_cost}? (yes/no): ")
+                    if choice.lower() in ["yes", "no"]:
+                        break
+                    print("Invalid input. Please enter 'yes' or 'no'.")
+                if choice.lower() == "yes":
+                    buy_property(player_id, property_id)
+                else:
+                    print("Property not bought.")
 
     player_money = get_player_money(cursor, player_id)
     print(f"{player_name}, your new balance is ${player_money}.")
@@ -161,6 +169,8 @@ def handle_player_turn(player_id, player_name):
 
 
 def play_game():
+    # Runs the main game loop, managing player turns, checking for bankruptcy, and determining the winner.
+
     conn = connect(print_message=True)  # Print message only once at setup
     if not conn:
         return
@@ -177,20 +187,19 @@ def play_game():
                 game_over = True
                 break
 
-            # Check if game is over
-            cursor.execute("SELECT money FROM players WHERE id = %s", (player_id,))
-            money = cursor.fetchone()[0]
-            if money <= 0:
-                print(f"{player_name} is bankrupt!")
+            # Check for bankruptcy
+            players = check_bankruptcy(cursor, player_id, player_name, players)
+
+            # Check for a winner
+            if len(players) == 1:
+                print(f"Congratulations, {players[0][1]} wins!")
                 game_over = True
                 break
 
     cursor.close()
     conn.close()
-
-    # Reset the database at the end of the game
     reset_database()
-    print("Game over. Database has been reset.")
+    print("Game Over. Database reset.")
 
 
 if __name__ == "__main__":

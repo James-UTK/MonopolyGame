@@ -1,3 +1,4 @@
+# Handles the database connection and provides functions to interact with the database (e.g., add players, fetch data).
 import psycopg2
 from dotenv import load_dotenv
 import os
@@ -13,6 +14,8 @@ DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT')
 
 def connect(print_message=False):
+    # Establishes a connection to the PostgreSQL database using credentials from environment variables.
+
     try:
         # Establish connection to the PostgreSQL database
         connection = psycopg2.connect(

@@ -3,8 +3,12 @@
 A Python application for a digital version of Monopoly using PostgreSQL. 
 
 ### Features
-- Add players and properties
-- Simulate gameplay with dice rolls, property transactions, and more
+- Create and manage multiple players.
+- Properties can be bought, sold, and improved.
+- Rent is paid when a player lands on an owned property.
+- Special spaces like "Go", "Jail", and "Income Tax" trigger unique events.
+- Players can go bankrupt and sell their properties back to the bank.
+- Game ends when only one player remains or the user quits.
 
 ### Setup
 1. Clone the repository:
